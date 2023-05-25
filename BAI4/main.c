@@ -116,7 +116,8 @@ uint16_t gatt_db_handle_table[HRS_IDX_NB];
 
 static gatts_profile_inst profile = {
     .gatts_cb = gatts_profile_event_handler,
-    .gatts_if = ESP_GATT_IF_NONE};
+    .gatts_if = ESP_GATT_IF_NONE
+};
 
 /* Service */
 static const uint16_t GATTS_SERVICE_UUID = 0xABCD;
@@ -166,29 +167,22 @@ void app_main(void)
     ssd1306_init();
     ssd1306_display_clear();
 
-    // Khởi tạo phân vùng NVS để sử dụng cho bluetooth driver
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES)
     {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ESP_ERROR_CHECK(nvs_flash_init());
     }
-    // Xóa bỏ vùng nhớ dùng để quản lý bluetooth cổ điển
-    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-    // Thiết lập chế độ cho BLE
+   
+    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT)); 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
     ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
-    // Khởi tạo bluedroid và cho phép bluedroid hoạt động để sử dụng BLE
     ESP_ERROR_CHECK(esp_bluedroid_init());
     ESP_ERROR_CHECK(esp_bluedroid_enable());
-
     ESP_ERROR_CHECK(esp_ble_gatts_register_callback(gatts_event_handler));
-
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_event_handler));
-
     ESP_ERROR_CHECK(esp_ble_gatts_app_register(ESP_APP_ID));
-
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND;
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(esp_ble_auth_req_t));
 }
@@ -208,17 +202,16 @@ void ssd1306_init()
     i2c_master_write_byte(cmd, OLED_CMD_DISPLAY_OFF, true);
     i2c_master_write_byte(cmd, OLED_CMD_DISPLAY_ON, true);
     i2c_master_stop(cmd);
+
     espRc = i2c_master_cmd_begin(I2C_NUM_0, cmd, 10 / portTICK_PERIOD_MS);
     if (espRc == ESP_OK)
-    {
-        printf("OLED configured successfully\n");
-    }
-    else
-    {
-        printf("OLED configuration failed. code: 0x%.2X\n", espRc);
-    }
+        printf("OLED configured successfully\n");  
+    else  
+        printf("OLED configuration failed. code: 0x%.2X\n", espRc);   
+
     i2c_cmd_link_delete(cmd);
 }
+
 void ssd1306_display_clear()
 {
     i2c_cmd_handle_t cmd;
@@ -242,6 +235,7 @@ void ssd1306_display_clear()
         i2c_cmd_link_delete(cmd);
     }
 }
+
 void ssd1306_display_text(const void *arg_text, int page)
 {
     char *text = (char *)arg_text;
@@ -293,6 +287,7 @@ void ssd1306_display_text(const void *arg_text, int page)
         }
     }
 }
+
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event)
@@ -300,41 +295,34 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
         adv_config_done &= (~ADV_CONFIG_FLAG);
         if (adv_config_done == 0)
-        {
             esp_ble_gap_start_advertising(&adv_params);
-        }
         break;
+
     case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:
         adv_config_done &= (~SCAN_RSP_CONFIG_FLAG);
         if (adv_config_done == 0)
-        {
             esp_ble_gap_start_advertising(&adv_params);
-        }
         break;
+
     case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
         if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS)
-        {
             printf("Advertising start failed\n");
-        }
         else
-        {
             printf("Advertising start successfully\n\n");
-        }
         break;
+
     case ESP_GAP_BLE_AUTH_CMPL_EVT:
         if (param->ble_security.auth_cmpl.success)
-        {
             printf("Pair status = success\n\n");
-        }
         else
-        {
             printf("Pair status = fail, reason = 0x%x\n", param->ble_security.auth_cmpl.fail_reason);
-        }
         break;
+
     default:
         break;
     }
 }
+
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event)
@@ -347,11 +335,10 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         adv_config_done |= SCAN_RSP_CONFIG_FLAG;
         ESP_ERROR_CHECK(esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, HRS_IDX_NB, SVC_INST_ID));
         break;
+
     case ESP_GATTS_CREAT_ATTR_TAB_EVT:
         if (param->add_attr_tab.status != ESP_GATT_OK)
-        {
             printf("Create attribute table failed, error code=0x%x\n", param->add_attr_tab.status);
-        }
         else if (param->add_attr_tab.num_handle != HRS_IDX_NB)
         {
             printf("Create attribute table abnormally, num_handle (%d) \n\
@@ -365,18 +352,23 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_ERROR_CHECK(esp_ble_gatts_start_service(gatt_db_handle_table[IDX_SVC]));
         }
         break;
+
     case ESP_GATTS_START_EVT:
         printf("SERVICE_START_EVT, status %d, service_handle %d\n", param->start.status, param->start.service_handle);
         break;
+
     case ESP_GATTS_CONNECT_EVT:
         printf("ESP_GATTS_CONNECT_EVT, conn_id = %d\n", param->connect.conn_id);
         break;
+
     case ESP_GATTS_DISCONNECT_EVT:
         printf("ESP_GATTS_DISCONNECT_EVT, reason = %d\n", param->disconnect.reason);
         ESP_ERROR_CHECK(esp_ble_gap_start_advertising(&adv_params));
+    
     case ESP_GATTS_READ_EVT:
         printf("ESP_GATTS_READ_EVT, handle=0x%d, offset=%d\n\n", param->read.handle, param->read.offset);
         break;
+    
     case ESP_GATTS_WRITE_EVT:
         printf("ESP_GATTS_WRITE_EVT, handle=0x%04x\n", param->write.handle);
         if (gatt_db_handle_table[IDX_CHAR_VAL] == param->write.handle && param->write.len == STUDENT_ID_LENGTH)
@@ -389,18 +381,18 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             numberOfWrites++;
         }
         break;
+    
     default:
         break;
     }
 }
+
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     if (event == ESP_GATTS_REG_EVT)
     {
         if (param->reg.status == ESP_GATT_OK)
-        {
             profile.gatts_if = gatts_if;
-        }
         else
         {
             printf("Reg app failed, app_id %04x, status %d\n", param->reg.app_id, param->reg.status);
@@ -409,10 +401,6 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     }
 
     if (gatts_if == ESP_GATT_IF_NONE || gatts_if == profile.gatts_if)
-    {
         if (profile.gatts_cb)
-        {
             profile.gatts_cb(event, gatts_if, param);
-        }
-    }
 }
